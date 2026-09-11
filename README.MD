@@ -8,6 +8,11 @@
 
 > 状态：已实现并跑通（v0.1）。仓库根 `ops-dump/` 为可独立运行/迁移的 Go 模块（模块名 `ops-dump`）。
 
+## 仓库地址
+
+- GitHub：<https://github.com/LeapSunrise26/OpsDump>
+- Gitee：<https://gitee.com/LeapSunrise/OpsDump>
+
 ## 特性
 
 - **数据库备份模板**：内置 MySQL / TDengine / MinIO(S3) 备份模板，**默认禁用**，页面启用后按 cron 自动运行。
