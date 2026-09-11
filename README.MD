@@ -145,3 +145,12 @@ nohup ./ops-dump > /dev/null 2>&1 &
 - 敏感信息一律 `${VAR}` 引用 `.env`，明文不出库不落地；`.env` 权限 `600`。
 - `httpAddr` 建议绑定内网；通用 shell 任务拥有执行权限，需审计。
 - 备份产物应与源数据不在同一磁盘；清理任务须排在同步任务之后。
+
+## 软件截图
+
+概览
+![opsdump1](./docs/images/opsdump1.png)
+任务管理
+![opsdump2](./docs/images/opsdump2.png)
+执行历史
+![opsdump3](./docs/images/opsdump3.png)
