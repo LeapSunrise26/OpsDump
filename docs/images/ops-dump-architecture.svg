@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" width="900" height="700">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 28px; font-weight: bold; fill: #333; }
+      .subtitle { font-family: Arial, sans-serif; font-size: 14px; fill: #666; }
+      .layer-title { font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; fill: #333; text-anchor: middle; }
+      .box-text { font-family: Arial, sans-serif; font-size: 12px; fill: #333; text-anchor: middle; }
+      .box-text-small { font-family: Arial, sans-serif; font-size: 10px; fill: #666; text-anchor: middle; }
+      .legend-text { font-family: Arial, sans-serif; font-size: 11px; fill: #333; }
+    </style>
+    <marker id="arrow" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+      <polygon points="0 0, 6 2.5, 0 5" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- 标题 -->
+  <text x="450" y="35" class="title" text-anchor="middle">OpsDump 架构图</text>
+  <text x="450" y="55" class="subtitle" text-anchor="middle">单进程运维调度平台</text>
+
+  <!-- 图例 -->
+  <rect x="50" y="70" width="12" height="12" rx="2" fill="#e3f2fd" stroke="#2196F3" stroke-width="1"/>
+  <text x="68" y="81" class="legend-text">用户界面</text>
+  <rect x="150" y="70" width="12" height="12" rx="2" fill="#e8f5e9" stroke="#4CAF50" stroke-width="1"/>
+  <text x="168" y="81" class="legend-text">HTTP层</text>
+  <rect x="230" y="70" width="12" height="12" rx="2" fill="#fff3e0" stroke="#FF9800" stroke-width="1"/>
+  <text x="248" y="81" class="legend-text">控制器</text>
+  <rect x="310" y="70" width="12" height="12" rx="2" fill="#fce4ec" stroke="#E91E63" stroke-width="1"/>
+  <text x="328" y="81" class="legend-text">服务层</text>
+  <rect x="390" y="70" width="12" height="12" rx="2" fill="#e0f7fa" stroke="#00BCD4" stroke-width="1"/>
+  <text x="408" y="81" class="legend-text">外部组件</text>
+
+  <!-- 主架构区域 -->
+  <rect x="50" y="100" width="600" height="560" rx="10" fill="#fafafa" stroke="#ddd" stroke-width="1"/>
+  <text x="350" y="125" class="layer-title">主架构流程</text>
+
+  <!-- 用户层 -->
+  <rect x="80" y="140" width="540" height="70" rx="8" fill="#e3f2fd" stroke="#2196F3" stroke-width="2"/>
+  <text x="350" y="160" class="layer-title" fill="#1565C0">用户层</text>
+  <rect x="120" y="170" width="180" height="30" rx="5" fill="#bbdefb" stroke="#2196F3" stroke-width="1"/>
+  <text x="210" y="190" class="box-text">Web 浏览器</text>
+  <rect x="380" y="170" width="180" height="30" rx="5" fill="#bbdefb" stroke="#2196F3" stroke-width="1"/>
+  <text x="470" y="190" class="box-text">SSH 客户端</text>
+
+  <!-- HTTP服务器层 -->
+  <rect x="80" y="230" width="540" height="80" rx="8" fill="#e8f5e9" stroke="#4CAF50" stroke-width="2"/>
+  <text x="350" y="250" class="layer-title" fill="#2E7D32">HTTP 服务器层 (ghttp)</text>
+  <rect x="100" y="265" width="120" height="35" rx="5" fill="#c8e6c9" stroke="#4CAF50" stroke-width="1"/>
+  <text x="160" y="287" class="box-text">页面路由</text>
+  <rect x="240" y="265" width="120" height="35" rx="5" fill="#c8e6c9" stroke="#4CAF50" stroke-width="1"/>
+  <text x="300" y="287" class="box-text">REST API</text>
+  <rect x="380" y="265" width="120" height="35" rx="5" fill="#c8e6c9" stroke="#4CAF50" stroke-width="1"/>
+  <text x="440" y="287" class="box-text">认证中间件</text>
+  <rect x="520" y="265" width="80" height="35" rx="5" fill="#c8e6c9" stroke="#4CAF50" stroke-width="1"/>
+  <text x="560" y="287" class="box-text">/ping</text>
+
+  <!-- 控制器层 -->
+  <rect x="80" y="330" width="540" height="80" rx="8" fill="#fff3e0" stroke="#FF9800" stroke-width="2"/>
+  <text x="350" y="350" class="layer-title" fill="#E65100">控制器层 (controller)</text>
+  <rect x="100" y="365" width="100" height="35" rx="5" fill="#ffe0b2" stroke="#FF9800" stroke-width="1"/>
+  <text x="150" y="387" class="box-text">任务管理</text>
+  <rect x="220" y="365" width="100" height="35" rx="5" fill="#ffe0b2" stroke="#FF9800" stroke-width="1"/>
+  <text x="270" y="387" class="box-text">执行历史</text>
+  <rect x="340" y="365" width="100" height="35" rx="5" fill="#ffe0b2" stroke="#FF9800" stroke-width="1"/>
+  <text x="390" y="387" class="box-text">通知配置</text>
+  <rect x="460" y="365" width="80" height="35" rx="5" fill="#ffe0b2" stroke="#FF9800" stroke-width="1"/>
+  <text x="500" y="387" class="box-text">导出导入</text>
+  <rect x="560" y="365" width="50" height="35" rx="5" fill="#ffe0b2" stroke="#FF9800" stroke-width="1"/>
+  <text x="585" y="387" class="box-text">认证</text>
+
+  <!-- 服务层 -->
+  <rect x="80" y="430" width="540" height="90" rx="8" fill="#fce4ec" stroke="#E91E63" stroke-width="2"/>
+  <text x="350" y="450" class="layer-title" fill="#AD1457">服务层 (service)</text>
+  <rect x="95" y="465" width="80" height="45" rx="5" fill="#f8bbd9" stroke="#E91E63" stroke-width="1"/>
+  <text x="135" y="485" class="box-text">任务调度</text>
+  <text x="135" y="500" class="box-text-small">(gcron)</text>
+  <rect x="190" y="465" width="80" height="45" rx="5" fill="#f8bbd9" stroke="#E91E63" stroke-width="1"/>
+  <text x="230" y="485" class="box-text">任务执行</text>
+  <text x="230" y="500" class="box-text-small">(runner)</text>
+  <rect x="285" y="465" width="80" height="45" rx="5" fill="#f8bbd9" stroke="#E91E63" stroke-width="1"/>
+  <text x="325" y="485" class="box-text">环境变量</text>
+  <text x="325" y="500" class="box-text-small">(env)</text>
+  <rect x="380" y="465" width="80" height="45" rx="5" fill="#f8bbd9" stroke="#E91E63" stroke-width="1"/>
+  <text x="420" y="485" class="box-text">命令执行</text>
+  <text x="420" y="500" class="box-text-small">(execute)</text>
+  <rect x="475" y="465" width="70" height="45" rx="5" fill="#f8bbd9" stroke="#E91E63" stroke-width="1"/>
+  <text x="510" y="485" class="box-text">飞书通知</text>
+  <text x="510" y="500" class="box-text-small">(notify)</text>
+  <rect x="560" y="465" width="50" height="45" rx="5" fill="#f8bbd9" stroke="#E91E63" stroke-width="1"/>
+  <text x="585" y="485" class="box-text">认证</text>
+  <text x="585" y="500" class="box-text-small">(auth)</text>
+
+  <!-- 数据访问层 -->
+  <rect x="80" y="540" width="540" height="50" rx="8" fill="#e0f7fa" stroke="#00BCD4" stroke-width="2"/>
+  <text x="350" y="570" class="layer-title" fill="#00838F">数据访问层 (dao)</text>
+
+  <!-- 数据库层 -->
+  <rect x="80" y="610" width="540" height="40" rx="8" fill="#e0f7fa" stroke="#00BCD4" stroke-width="2"/>
+  <text x="350" y="635" class="layer-title" fill="#00838F">SQLite (ops-dump.db)</text>
+
+  <!-- 外部组件区域 -->
+  <rect x="680" y="100" width="180" height="560" rx="10" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+  <text x="770" y="125" class="layer-title">外部组件</text>
+
+  <!-- Docker -->
+  <rect x="700" y="180" width="140" height="60" rx="8" fill="#e0f7fa" stroke="#00BCD4" stroke-width="2"/>
+  <text x="770" y="205" class="box-text" font-weight="bold">Docker</text>
+  <text x="770" y="225" class="box-text-small">MySQL/TDengine</text>
+
+  <!-- 飞书 Webhook -->
+  <rect x="700" y="293" width="140" height="60" rx="8" fill="#e0f7fa" stroke="#00BCD4" stroke-width="2"/>
+  <text x="770" y="318" class="box-text" font-weight="bold">飞书 Webhook</text>
+  <text x="770" y="338" class="box-text-small">告警通知</text>
+
+  <!-- MinIO/S3 -->
+  <rect x="700" y="406" width="140" height="60" rx="8" fill="#e0f7fa" stroke="#00BCD4" stroke-width="2"/>
+  <text x="770" y="431" class="box-text" font-weight="bold">MinIO/S3</text>
+  <text x="770" y="451" class="box-text-small">mc 镜像备份</text>
+
+  <!-- 远程主机 -->
+  <rect x="700" y="519" width="140" height="60" rx="8" fill="#e0f7fa" stroke="#00BCD4" stroke-width="2"/>
+  <text x="770" y="544" class="box-text" font-weight="bold">远程主机</text>
+  <text x="770" y="564" class="box-text-small">SSH 跨机调度</text>
+
+  <!-- 主架构流程箭头 -->
+  <line x1="350" y1="210" x2="350" y2="230" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="350" y1="310" x2="350" y2="330" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="350" y1="410" x2="350" y2="430" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="350" y1="520" x2="350" y2="540" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="350" y1="590" x2="350" y2="610" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 外部组件连接线 -->
+  <line x1="680" y1="170" x2="620" y2="170" stroke="#00BCD4" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+  <line x1="680" y1="250" x2="620" y2="490" stroke="#00BCD4" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+  <line x1="680" y1="330" x2="620" y2="170" stroke="#00BCD4" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+  <line x1="680" y1="410" x2="620" y2="190" stroke="#00BCD4" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+</svg>

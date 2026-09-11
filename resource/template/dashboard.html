@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpsDump · 概览</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    #app { height: 100%; }
+    .main { background: #f5f7fa; padding: 20px; }
+    .stat-card { cursor: pointer; }
+    .stat-card:hover { transform: translateY(-2px); transition: transform .2s; }
+    .top-nav { display: flex; align-items: center; gap: 20px; background: #fff; border-bottom: 1px solid #ebeef5; height: 60px; padding: 0 20px; }
+    .top-nav .brand { display: flex; align-items: center; gap: 10px; color: #1f2a44; font-size: 19px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+    .top-nav .dot { width: 26px; height: 26px; border-radius: 8px; object-fit: contain; background: #fff; }
+    .top-nav .nav-menu { flex: 1; border-bottom: none; }
+    .top-nav .user-area { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <el-container style="height:100%">
+      <el-header class="top-nav">
+        <div class="brand"><img src="/image/logo-64.png" class="dot" alt="OpsDump"> OpsDump</div>
+        <el-menu mode="horizontal" :default-active="active" @select="onMenu" :ellipsis="false" class="nav-menu">
+          <el-menu-item index="/dashboard"><el-icon><data-line></data-line></el-icon><span>概览</span></el-menu-item>
+          <el-menu-item index="/jobs"><el-icon><List></List></el-icon><span>任务管理</span></el-menu-item>
+          <el-menu-item index="/runs"><el-icon><Histogram></Histogram></el-icon><span>执行历史</span></el-menu-item>
+        </el-menu>
+        <div class="user-area">
+          <el-tag type="info" effect="plain" round><el-icon style="margin-right:4px"><User></User></el-icon>{{user}}</el-tag>
+          <el-button text :icon="SwitchButton" @click="logout">退出</el-button>
+        </div>
+      </el-header>
+        <el-main class="main" v-loading="loading">
+          <el-row :gutter="12">
+            <el-col :span="4"><el-card shadow="hover" class="stat-card" @click="goJobs()"><div class="stat-label">任务总数</div><div class="stat-num">{{stats.total}}</div></el-card></el-col>
+            <el-col :span="4"><el-card shadow="hover" class="stat-card" @click="goJobs(1)"><div class="stat-label">已启用</div><div class="stat-num" style="color:#67c23a">{{stats.enabled}}</div></el-card></el-col>
+            <el-col :span="4"><el-card shadow="hover" class="stat-card" @click="goRuns('ok')"><div class="stat-label">今日成功</div><div class="stat-num" style="color:#409eff">{{stats.ok}}</div></el-card></el-col>
+            <el-col :span="4"><el-card shadow="hover" class="stat-card" @click="goRuns('failed')"><div class="stat-label">今日失败</div><div class="stat-num" style="color:#f56c6c">{{stats.fail}}</div></el-card></el-col>
+            <el-col :span="4"><el-card shadow="hover" class="stat-card" @click="goRuns()"><div class="stat-label">成功率</div><div class="stat-num" style="color:#e6a23c">{{stats.rate}}</div></el-card></el-col>
+          </el-row>
+
+          <el-card shadow="never" style="margin-top:18px">
+            <template #header><b>任务状态</b></template>
+            <el-table :data="jobs" stripe style="width:100%">
+              <el-table-column label="任务" min-width="120">
+                <template #default="{row}">{{row.name}}</template>
+              </el-table-column>
+              <el-table-column prop="kind" label="类型" width="90">
+                <template #default="{row}"><el-tag size="small">{{row.kind}}</el-tag></template>
+              </el-table-column>
+              <el-table-column prop="cron" label="Cron" min-width="120"><template #default="{row}"><code style="font-size:12px">{{row.cron}}</code></template></el-table-column>
+              <el-table-column label="启用" width="70">
+                <template #default="{row}">
+                  <el-tag :type="row.enabled===1 ? 'success' : 'info'" effect="light" size="small">
+                    {{row.enabled===1 ? '是' : '否'}}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="最近执行" min-width="140">
+                <template #default="{row}">
+                  <span v-if="row.last_status">
+                    <el-tag :type="tagType(row.last_status)" effect="light" size="small">{{row.last_status}}</el-tag>
+                    <span style="color:#909399;margin-left:4px;font-size:12px">{{fmtTime(row.last_time)}}</span>
+                  </span>
+                  <span v-else style="color:#c0c4cc">—</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="今日成功" width="80" align="center">
+                <template #default="{row}"><span style="color:#409eff">{{row.today_ok}}</span></template>
+              </el-table-column>
+              <el-table-column label="今日失败" width="80" align="center">
+                <template #default="{row}"><span style="color:#f56c6c">{{row.today_fail}}</span></template>
+              </el-table-column>
+              <el-table-column label="成功率" width="70" align="center">
+                <template #default="{row}"><span style="color:#e6a23c">{{row.today_rate}}</span></template>
+              </el-table-column>
+              <el-table-column label="平均耗时" width="80" align="center">
+                <template #default="{row}"><span style="color:#909399">{{row.today_avg_time}}</span></template>
+              </el-table-column>
+              <el-table-column label="操作" width="100">
+                <template #default="{row}">
+                  <el-button size="small" @click="goJobRuns(row)">执行历史</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-main>
+    </el-container>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+  <script>
+    const { createApp, ref, reactive, computed, onMounted } = Vue;
+    const App = {
+  setup() {
+    const { SwitchButton } = ElementPlusIconsVue;
+    const active = '/dashboard';
+        const user = ref('');
+        const loading = ref(false);
+        const jobs = ref([]);
+        const stats = reactive({ total: 0, enabled: 0, ok: 0, fail: 0, rate: '-' });
+
+        const tagType = (s) => ({ ok: 'success', failed: 'danger', running: 'warning', skipped: 'info' }[s] || 'info');
+        const fmtTime = (s) => {
+          if (!s) return '—';
+          const m = String(s).match(/(\d{4}-\d{2}-\d{2})[ T]?\w*(\d{2}:\d{2}:\d{2})/);
+          return m ? m[1] + ' ' + m[2] : s;
+        };
+
+        const onMenu = (i) => { if (i !== active) location.href = i; };
+        const logout = () => { fetch('/api/logout', { method: 'POST' }).then(() => location.href = '/login'); };
+        const goJobs = (enabled) => { location.href = '/jobs' + (enabled ? '?enabled=' + enabled : ''); };
+        const goRuns = (status) => { location.href = '/runs' + (status ? '?status=' + status : ''); };
+        const goJobRuns = (row) => { location.href = '/runs?job=' + encodeURIComponent(row.name); };
+
+        const load = async () => {
+          loading.value = true;
+          try {
+            const [d, u] = await Promise.all([
+              fetch('/api/dashboard').then(x => x.json()),
+              fetch('/api/current-user').then(x => x.json()),
+            ]);
+            if (d.code === 0 && d.data) {
+              Object.assign(stats, d.data.stats || {});
+              jobs.value = d.data.jobs || [];
+            }
+            user.value = (u.data && u.data.username) || '';
+          } finally { loading.value = false; }
+        };
+        onMounted(load);
+        return { active, user, loading, jobs, stats, tagType, fmtTime, onMenu, logout, goJobs, goRuns, goJobRuns, SwitchButton };
+      },
+    };
+    const app = createApp(App);
+    app.use(ElementPlus);
+    for (const [k, c] of Object.entries(ElementPlusIconsVue)) app.component(k, c);
+    app.mount('#app');
+  </script>
+</body>
+</html>

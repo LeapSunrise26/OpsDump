@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpsDump 登录</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    #app { height: 100%; }
+    .login-bg {
+      position: relative;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(125deg, #0f172a 0%, #1e3a8a 45%, #0ea5e9 100%);
+      background-size: 300% 300%;
+      animation: bgShift 14s ease infinite;
+    }
+    @keyframes bgShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .login-bg::before, .login-bg::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(70px);
+      opacity: 0.45;
+    }
+    .login-bg::before {
+      width: 460px; height: 460px;
+      background: #38bdf8;
+      top: -120px; left: -100px;
+      animation: float1 11s ease-in-out infinite;
+    }
+    .login-bg::after {
+      width: 380px; height: 380px;
+      background: #6366f1;
+      bottom: -120px; right: -80px;
+      animation: float2 13s ease-in-out infinite;
+    }
+    @keyframes float1 { 0%,100% { transform: translateY(0) } 50% { transform: translateY(40px) } }
+    @keyframes float2 { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-36px) } }
+    .login-card {
+      position: relative;
+      width: 400px;
+      padding: 40px 36px 30px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(2, 6, 23, 0.45);
+      animation: rise 0.6s cubic-bezier(.2,.8,.2,1) both;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: none } }
+    .brand { text-align: center; margin-bottom: 6px; }
+    .brand .logo {
+      width: 56px; height: 56px; margin: 0 auto 12px;
+      border-radius: 16px;
+      object-fit: contain;
+    }
+    .brand h1 { margin: 0; font-size: 26px; color: #0f172a; letter-spacing: 1px; }
+    .brand p { margin: 8px 0 0; font-size: 13px; color: #64748b; }
+    .brand .slogan { color: #0284c7; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="login-bg">
+      <el-card class="login-card" shadow="never">
+        <div class="brand">
+          <img src="/image/logo-64.png" class="logo" alt="OpsDump">
+          <h1>OpsDump</h1>
+            <p>极速调度，可靠备份</p>
+            <p><span class="slogan">The Swift Engine for Ops &amp; Dump</span></p>
+        </div>
+        <el-form :model="form" :rules="rules" ref="formRef" label-position="left" label-width="70px" @submit.prevent="onSubmit">
+          <el-form-item label="用户名" prop="username">
+            <el-input v-model="form.username" placeholder="请输入用户名" autocomplete="username" size="large">
+              <template #prefix><el-icon><User></User></el-icon></template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="form.password" type="password" show-password placeholder="请输入密码"
+                      autocomplete="current-password" size="large" @keyup.enter="onSubmit">
+              <template #prefix><el-icon><Lock></Lock></el-icon></template>
+            </el-input>
+          </el-form-item>
+          <el-form-item style="margin-bottom:14px">
+            <el-checkbox v-model="remember">记住账号密码</el-checkbox>
+          </el-form-item>
+          <el-alert v-if="msg" :title="msg" type="error" show-icon :closable="false" style="margin-bottom:14px"></el-alert>
+          <el-button type="primary" size="large" style="width:100%" :loading="loading" @click="onSubmit">
+            登 录
+          </el-button>
+        </el-form>
+      </el-card>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+  <script>
+    const { createApp, ref, reactive } = Vue;
+    const App = {
+      setup() {
+        const formRef = ref();
+        const form = reactive({ username: '', password: '' });
+        const remember = ref(false);
+        const saved = (() => { try { return JSON.parse(localStorage.getItem('opsdump_login')); } catch (e) { return null; } })();
+        if (saved) { form.username = saved.username; form.password = saved.password; remember.value = true; }
+        const rules = {
+          username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+          password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+        };
+        const loading = ref(false);
+        const msg = ref('');
+        const onSubmit = () => {
+          formRef.value.validate((valid) => {
+            if (!valid) return;
+            loading.value = true;
+            msg.value = '';
+            fetch('/api/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: form.username, password: form.password }),
+            }).then(r => r.json()).then(data => {
+              loading.value = false;
+              if (data.code === 0) {
+                if (remember.value) { localStorage.setItem('opsdump_login', JSON.stringify({ username: form.username, password: form.password })); }
+                else { localStorage.removeItem('opsdump_login'); }
+                location.href = '/dashboard';
+              }
+              else { msg.value = data.msg || '登录失败'; }
+            }).catch(() => {
+              loading.value = false;
+              msg.value = '网络错误，请稍后重试';
+            });
+          });
+        };
+        return { formRef, form, remember, rules, loading, msg, onSubmit };
+      },
+    };
+    const app = createApp(App);
+    app.use(ElementPlus);
+    for (const [k, c] of Object.entries(ElementPlusIconsVue)) app.component(k, c);
+    app.mount('#app');
+  </script>
+</body>
+</html>

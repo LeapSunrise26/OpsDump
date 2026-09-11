@@ -1,0 +1,32 @@
+.buildpath
+.hgignore.swp
+.project
+.orig
+.swp
+.idea/
+.settings/
+.vscode/
+bin/
+**/.DS_Store
+gf
+main
+main.exe
+output/
+manifest/output/
+temp/
+temp.yaml
+bin
+# runtime artifacts
+ops-dump.db
+ops-dump.db-shm
+ops-dump.db-wal
+ops-dump.env
+logs/
+*.exe
+
+# build output
+/ops-dump
+/ops-dump-test
+build/*
+v1.0.0/*
+deploy.ps1

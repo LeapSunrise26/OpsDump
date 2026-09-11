@@ -1,0 +1,23 @@
+# gfcli configuration for ops-dump code generation.
+#
+# Generate DAO / entity / model code from the standalone ops-dump.db:
+#   gf gen dao -cfg ./hack/config.yaml
+#
+# The database.prefix "od_" strips the table prefix so generated entity names are
+# clean (e.g. table od_jobs -> entity Jobs, dao Jobs).
+gfcli:
+  database:
+    link: "sqlite:./ops-dump.db"
+    prefix: "od_"
+  gen:
+    dao:
+      path: "internal/dao"
+      # Keep hand-written dao files; only (re)generate when schema changes.
+      overwrite: true
+  build:
+    name: "ops-dump"
+    arch: "amd64"
+    system: "linux"
+    mod: "none"
+    packSrc: "resource"
+    version: "v1.0.0"

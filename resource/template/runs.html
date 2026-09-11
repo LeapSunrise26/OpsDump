@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpsDump · 执行历史</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    #app { height: 100%; }
+    .main { background: #f5f7fa; padding: 20px; }
+    .top-nav { display: flex; align-items: center; gap: 20px; background: #fff; border-bottom: 1px solid #ebeef5; height: 60px; padding: 0 20px; }
+    .top-nav .brand { display: flex; align-items: center; gap: 10px; color: #1f2a44; font-size: 19px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+    .top-nav .dot { width: 26px; height: 26px; border-radius: 8px; object-fit: contain; background: #fff; }
+    .top-nav .nav-menu { flex: 1; border-bottom: none; }
+    .top-nav .user-area { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+    pre.log { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; max-height: 260px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+    .command-cell { display: block; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <el-container style="height:100%">
+      <el-header class="top-nav">
+        <div class="brand"><img src="/image/logo-64.png" class="dot" alt="OpsDump"> OpsDump</div>
+        <el-menu mode="horizontal" :default-active="active" @select="onMenu" :ellipsis="false" class="nav-menu">
+          <el-menu-item index="/dashboard"><el-icon><data-line></data-line></el-icon><span>概览</span></el-menu-item>
+          <el-menu-item index="/jobs"><el-icon><List></List></el-icon><span>任务管理</span></el-menu-item>
+          <el-menu-item index="/runs"><el-icon><Histogram></Histogram></el-icon><span>执行历史</span></el-menu-item>
+        </el-menu>
+        <div class="user-area">
+          <el-tag type="info" effect="plain" round><el-icon style="margin-right:4px"><User></User></el-icon>{{user}}</el-tag>
+          <el-button text :icon="SwitchButton" @click="logout">退出</el-button>
+        </div>
+      </el-header>
+        <el-main class="main" v-loading="loading">
+          <el-card shadow="never">
+            <template #header>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <b>最近执行记录</b>
+                <div>
+                  <el-button size="small" :icon="Refresh" @click="load">刷新</el-button>
+                  <el-button size="small" type="danger" :icon="Delete" @click="clearRuns">清空历史</el-button>
+                </div>
+              </div>
+            </template>
+            <div style="display:flex;gap:12px;margin-bottom:14px">
+              <el-select v-model="filters.jobName" placeholder="任务名称" clearable filterable style="width:200px">
+                <el-option v-for="j in jobs" :key="j.id" :label="j.name" :value="j.name"></el-option>
+              </el-select>
+              <el-select v-model="filters.status" placeholder="执行状态" clearable style="width:140px">
+                <el-option label="成功" value="ok"></el-option>
+                <el-option label="失败" value="failed"></el-option>
+                <el-option label="进行中" value="running"></el-option>
+                <el-option label="跳过" value="skipped"></el-option>
+              </el-select>
+            </div>
+            <el-table :data="runs" stripe style="width:100%">
+              <el-table-column type="expand">
+                <template #default="{row}">
+                  <div style="padding:4px 12px">
+                    <div v-if="row.command" style="margin-bottom:6px"><b>执行命令：</b></div>
+                    <pre v-if="row.command" class="log">{{row.command}}</pre>
+                    <div style="margin-bottom:6px"><b>输出：</b></div>
+                    <pre class="log">{{row.output || '（无）'}}</pre>
+                    <div v-if="row.error" style="margin-top:8px"><b>错误：</b></div>
+                    <pre v-if="row.error" class="log" style="background:#3b0d0d">{{row.error}}</pre>
+                    <div v-if="row.verify_output" style="margin-top:8px"><b>检测输出：</b></div>
+                    <pre v-if="row.verify_output" class="log">{{row.verify_output}}</pre>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="ID" width="70">
+                <template #default="{row}">{{row.id}}</template>
+              </el-table-column>
+              <el-table-column label="任务ID" width="90">
+                <template #default="{row}">{{row.job_id}}</template>
+              </el-table-column>
+              <el-table-column label="任务名称" min-width="140">
+                <template #default="{row}">{{row.job_name || '—'}}</template>
+              </el-table-column>
+              <el-table-column label="执行命令" min-width="280">
+                <template #default="{row}">
+                  <el-tooltip v-if="row.command" :content="row.command" placement="top-start">
+                    <code class="command-cell">{{row.command}}</code>
+                  </el-tooltip>
+                  <span v-else>—</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="110">
+                <template #default="{row}"><el-tag :type="tagType(row.status)" effect="light">{{row.status}}</el-tag></template>
+              </el-table-column>
+              <el-table-column label="检测" width="110">
+                <template #default="{row}">
+                  <el-tag v-if="row.verify_status" :type="tagType(row.verify_status)" effect="light">{{row.verify_status}}</el-tag>
+                  <span v-else style="color:#c0c4cc">—</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="体积(MB)" width="110">
+                <template #default="{row}">{{row.size_mb != null ? Number(row.size_mb).toFixed(2) : '—'}}</template>
+              </el-table-column>
+              <el-table-column label="耗时" width="100">
+                <template #default="{row}">{{row.elapsed_ms ? row.elapsed_ms + 'ms' : '—'}}</template>
+              </el-table-column>
+              <el-table-column prop="finished_at" label="结束时间" min-width="180">
+                <template #default="{row}">{{fmtTime(row.finished_at)}}</template>
+              </el-table-column>
+              <el-table-column label="磁盘剩余(MB)" min-width="120">
+                <template #default="{row}">{{row.disk_free_mb != null ? Number(row.disk_free_mb).toFixed(0) : '—'}}</template>
+              </el-table-column>
+            </el-table>
+            <div style="display:flex;justify-content:flex-end;margin-top:14px">
+              <el-pagination
+                v-model:current-page="pagination.page"
+                v-model:page-size="pagination.pageSize"
+                :page-sizes="[50, 100, 200]"
+                :total="pagination.total"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="load"
+                @current-change="load"
+              />
+            </div>
+          </el-card>
+        </el-main>
+    </el-container>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+  <script>
+    const { createApp, ref, reactive, computed, onMounted } = Vue;
+    const App = {
+  setup() {
+    const { SwitchButton, Refresh, Delete } = ElementPlusIconsVue;
+    const ElMessage = (window.ElementPlus && ElementPlus.ElMessage) || window.ElMessage;
+    const ElMessageBox = (window.ElementPlus && ElementPlus.ElMessageBox) || window.ElMessageBox;
+    const active = '/runs';
+        const user = ref('');
+        const loading = ref(false);
+        const runs = ref([]);
+        const jobs = ref([]);
+        const filters = reactive({ jobName: '', status: '' });
+        const pagination = reactive({ page: 1, pageSize: 50, total: 0 });
+        // Apply filter params passed from the dashboard (e.g. /runs?status=ok&job=name).
+        (() => {
+          const q = new URLSearchParams(location.search);
+          if (q.get('status')) filters.status = q.get('status');
+          if (q.get('job')) filters.jobName = q.get('job');
+        })();
+        const tagType = (s) => ({ ok: 'success', failed: 'danger', running: 'warning', skipped: 'info' }[s] || 'info');
+        const fmtTime = (s) => {
+          if (!s) return '—';
+          const m = String(s).match(/(\d{4}-\d{2}-\d{2})[ T]?\w*(\d{2}:\d{2}:\d{2})/);
+          return m ? m[1] + ' ' + m[2] : s;
+        };
+        const onMenu = (i) => { if (i !== active) location.href = i; };
+        const logout = () => { fetch('/api/logout', { method: 'POST' }).then(() => location.href = '/login'); };
+        const clearRuns = () => {
+          const cond = [];
+          if (filters.jobName) cond.push('任务「' + filters.jobName + '」');
+          if (filters.status) cond.push('状态「' + filters.status + '」');
+          const desc = cond.length ? cond.join('、') : '全部';
+          ElMessageBox.confirm('确认清空执行历史吗？将删除 ' + desc + ' 的所有记录，此操作不可恢复。', '清空历史', {
+            type: 'warning', confirmButtonText: '确认清空', cancelButtonText: '取消',
+          }).then(async () => {
+            const r = await fetch('/api/runs/clear', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: filters.status, job_name: filters.jobName }),
+            }).then(x => x.json());
+            if (r.code === 0) { ElMessage.success('已清空 ' + ((r.data && r.data.deleted) || 0) + ' 条记录'); load(); }
+            else ElMessage.error(r.msg || '清空失败');
+          }).catch(() => {});
+        };
+        const load = async () => {
+          loading.value = true;
+          try {
+            const params = new URLSearchParams({
+              page: pagination.page,
+              page_size: pagination.pageSize,
+            });
+            if (filters.status) params.set('status', filters.status);
+            if (filters.jobName) params.set('job_name', filters.jobName);
+            const [r, j, u] = await Promise.all([
+              fetch('/api/runs?' + params.toString()).then(x => x.json()),
+              fetch('/api/jobs').then(x => x.json()),
+              fetch('/api/current-user').then(x => x.json()),
+            ]);
+            runs.value = (r.data && r.data.list) || [];
+            pagination.total = (r.data && r.data.total) || 0;
+            jobs.value = (j.data && j.data.list) || [];
+            user.value = (u.data && u.data.username) || '';
+          } finally { loading.value = false; }
+        };
+        // Watch filter changes
+        Vue.watch(filters, () => { pagination.page = 1; load(); });
+        onMounted(load);
+        return { active, user, loading, runs, jobs, filters, pagination, tagType, fmtTime, onMenu, logout, clearRuns, load, SwitchButton, Refresh, Delete };
+      },
+    };
+    const app = createApp(App);
+    app.use(ElementPlus);
+    for (const [k, c] of Object.entries(ElementPlusIconsVue)) app.component(k, c);
+    app.mount('#app');
+  </script>
+</body>
+</html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpsDump · 任务管理</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    #app { height: 100%; }
+    .main { background: #f5f7fa; padding: 20px; }
+    .top-nav { display: flex; align-items: center; gap: 20px; background: #fff; border-bottom: 1px solid #ebeef5; height: 60px; padding: 0 20px; }
+    .top-nav .brand { display: flex; align-items: center; gap: 10px; color: #1f2a44; font-size: 19px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+    .top-nav .dot { width: 26px; height: 26px; border-radius: 8px; object-fit: contain; background: #fff; }
+    .top-nav .nav-menu { flex: 1; border-bottom: none; }
+    .top-nav .user-area { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+    .kv-tools { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; }
+    .kv-tools button { display: inline-block; height: 26px; padding: 0 10px; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff; color: #606266; cursor: pointer; font-size: 11px; line-height: 24px; }
+    .kv-tools button:hover { border-color: #409eff; color: #409eff; }
+    .field-hint { display: block !important; width: 100%; margin-top: 8px; color: #909399; font-size: 12px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <el-container style="height:100%">
+      <el-header class="top-nav">
+        <div class="brand"><img src="/image/logo-64.png" class="dot" alt="OpsDump"> OpsDump</div>
+        <el-menu mode="horizontal" :default-active="active" @select="onMenu" :ellipsis="false" class="nav-menu">
+          <el-menu-item index="/dashboard"><el-icon><data-line></data-line></el-icon><span>概览</span></el-menu-item>
+          <el-menu-item index="/jobs"><el-icon><List></List></el-icon><span>任务管理</span></el-menu-item>
+          <el-menu-item index="/runs"><el-icon><Histogram></Histogram></el-icon><span>执行历史</span></el-menu-item>
+        </el-menu>
+        <div class="user-area">
+          <el-tag type="info" effect="plain" round><el-icon style="margin-right:4px"><User></User></el-icon>{{user}}</el-tag>
+          <el-button text :icon="SwitchButton" @click="logout">退出</el-button>
+        </div>
+      </el-header>
+        <el-main class="main" v-loading="loading">
+          <el-card shadow="never">
+            <template #header>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <b>任务列表</b>
+                <div style="display:flex;gap:8px">
+                  <el-button :icon="Message" @click="openNotifyConfig">通知配置</el-button>
+                  <el-button :icon="Download" @click="exportJobs">导出</el-button>
+                  <el-button :icon="Upload" @click="$refs.importInput.click()">导入</el-button>
+                  <input ref="importInput" type="file" accept=".json" style="display:none" @change="importJobs">
+                  <el-button type="primary" :icon="Plus" @click="openCreate">新建任务</el-button>
+                </div>
+              </div>
+            </template>
+            <div style="display:flex;gap:12px;margin-bottom:14px">
+              <el-input v-model="filters.name" placeholder="按名称筛选" clearable style="width:220px"></el-input>
+              <el-select v-model="filters.enabled" placeholder="启用状态" clearable style="width:140px">
+                <el-option label="启用" value="1"></el-option>
+                <el-option label="停用" value="0"></el-option>
+              </el-select>
+            </div>
+            <el-table :data="filteredJobs" stripe style="width:100%" row-key="id">
+              <el-table-column label="ID" width="70">
+                <template #default="{row}">{{row.id}}</template>
+              </el-table-column>
+              <el-table-column label="名称" min-width="140">
+                <template #default="{row}">{{row.name}}</template>
+              </el-table-column>
+              <el-table-column prop="kind" label="类型" width="110">
+                <template #default="{row}"><el-tag>{{row.kind}}</el-tag></template>
+              </el-table-column>
+              <el-table-column prop="cron" label="Cron" min-width="140"><template #default="{row}"><code>{{row.cron}}</code></template></el-table-column>
+              <el-table-column label="排序" width="110">
+                <template #default="{row, $index}">
+                  <div style="display:inline-flex;align-items:center;border:1px solid #dcdfe6;border-radius:4px;overflow:hidden">
+                    <button style="width:26px;height:24px;border:none;background:#f5f7fa;cursor:pointer;font-size:10px" :disabled="$index===0" @click="moveUp($index)">▲</button>
+                    <span style="width:26px;height:24px;line-height:24px;text-align:center;background:#fff;font-size:12px;color:#606266;border-left:1px solid #dcdfe6;border-right:1px solid #dcdfe6;user-select:none">{{$index + 1}}</span>
+                    <button style="width:26px;height:24px;border:none;background:#f5f7fa;cursor:pointer;font-size:10px" :disabled="$index===filteredJobs.length-1" @click="moveDown($index)">▼</button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="启用" width="90">
+                <template #default="{row}">
+                  <el-switch :model-value="row.enabled===1" @change="(v)=>toggle(row, v)" />
+                </template>
+              </el-table-column>
+              <el-table-column label="创建时间" min-width="150">
+                <template #default="{row}">{{row.created_at || '—'}}</template>
+              </el-table-column>
+              <el-table-column label="更新时间" min-width="150">
+                <template #default="{row}">{{row.updated_at || '—'}}</template>
+              </el-table-column>
+              <el-table-column label="操作" min-width="240">
+                <template #default="{row}">
+                  <el-button size="small" :icon="Edit" @click="openEdit(row)">编辑</el-button>
+                  <el-button size="small" type="success" :icon="VideoPlay" :loading="row.running" :disabled="row.running" @click="runJob(row)">执行</el-button>
+                  <el-popconfirm title="确认删除该任务?" @confirm="del(row)">
+                    <template #reference><el-button size="small" type="danger" :icon="Delete">删除</el-button></template>
+                  </el-popconfirm>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-main>
+    </el-container>
+
+    <el-dialog v-model="notifyDlg" title="通知配置" width="560px">
+      <el-tabs v-model="notifyChannel">
+        <el-tab-pane label="飞书" name="feishu">
+          <el-form :model="notifyForm.feishu" label-width="100px">
+            <el-form-item label="启用通知">
+              <el-switch v-model="notifyForm.feishu.enabled" />
+            </el-form-item>
+            <el-form-item label="Webhook URL">
+              <el-input v-model="notifyForm.feishu.webhook" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="notifySaving" @click="saveNotifyConfig('feishu')">保存</el-button>
+              <el-button @click="testNotify('feishu')">测试通知</el-button>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+        <el-tab-pane label="钉钉" name="dingtalk">
+          <el-form :model="notifyForm.dingtalk" label-width="100px">
+            <el-form-item label="启用通知">
+              <el-switch v-model="notifyForm.dingtalk.enabled" />
+            </el-form-item>
+            <el-form-item label="Webhook URL">
+              <el-input v-model="notifyForm.dingtalk.webhook" placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="notifySaving" @click="saveNotifyConfig('dingtalk')">保存</el-button>
+              <el-button @click="testNotify('dingtalk')">测试通知</el-button>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+      </el-tabs>
+      <div style="color:#909399;font-size:12px;margin-top:10px">
+        提示：请在群组中添加自定义机器人，获取 Webhook 地址。
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="dlg" :title="form.id ? '编辑任务' : '新建任务'" width="640px">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="110px">
+        <el-row :gutter="12">
+          <el-col :span="12"><el-form-item label="名称" prop="name"><el-input v-model="form.name" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="类型" prop="kind">
+            <el-select v-model="form.kind" style="width:100%">
+              <el-option label="MySQL" value="mysql"></el-option>
+              <el-option label="TDEngine" value="tdengine"></el-option>
+              <el-option label="MinIO" value="minio"></el-option>
+              <el-option label="Redis" value="redis"></el-option>
+              <el-option label="Shell" value="shell"></el-option>
+            </el-select>
+          </el-form-item></el-col>
+        </el-row>
+        <el-row :gutter="12">
+          <el-col :span="12"><el-form-item label="Cron" prop="cron"><el-input v-model="form.cron" placeholder="0 0 2 * * *" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="依赖任务">
+            <el-select v-model="form.depends_on" placeholder="无（可选前序任务）" clearable filterable style="width:100%">
+              <el-option v-for="j in jobs" :key="j.id" :label="j.name" :value="j.name" />
+            </el-select>
+          </el-form-item></el-col>
+        </el-row>
+        <el-form-item label="输出目录"><el-input v-model="form.out_dir" placeholder="例如 /data/backups/mysql（命令中用 &lt;output_dir&gt; 代表此路径）" /></el-form-item>
+        <el-form-item label="执行命令"><el-input v-model="form.command" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="检测命令"><el-input v-model="form.verify_command" type="textarea" :rows="2" /></el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="10"><el-form-item label="保留天数"><el-input-number v-model="form.retention_days" :min="0" :max="3650" style="width:100%;min-width:140px" /></el-form-item></el-col>
+          <el-col :span="5"><el-form-item label="成功通知"><el-switch v-model="form.notifyOnSuccessBool" /></el-form-item></el-col>
+          <el-col :span="5"><el-form-item label="失败通知"><el-switch v-model="form.notifyOnFailureBool" /></el-form-item></el-col>
+        </el-row>
+        <el-form-item label="扩展参数">
+          <el-input v-model="form.kv" type="textarea" :rows="2" placeholder='JSON 对象，例如 {"threads":4,"region":"cn-east"}' />
+        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12"><el-form-item label="JSON 操作">
+            <div class="kv-tools">
+              <button type="button" @click="formatKv">格式化</button>
+              <button type="button" @click="validateKv">校验</button>
+              <button type="button" @click="minifyKv">压缩</button>
+            </div>
+          </el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="启用"><el-switch v-model="form.enabledBool" style="margin-left:10px" /></el-form-item></el-col>
+        </el-row>
+        <el-form-item label="说明">
+          <div class="field-hint" style="margin-top:0">
+            命令占位符：环境变量使用 ${ "${变量名}" }，扩展参数使用 &lt;字段名&gt;。<br>
+            输出目录：备份存放路径，命令中用 &lt;output_dir&gt; 引用，体积和剩余空间基于此目录计算。<br>
+            保留天数：成功后自动清理目录中超期文件，0 表示不清理。
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dlg=false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+  <script>
+    const { createApp, ref, reactive, computed, onMounted } = Vue;
+    const ElMessage = (window.ElementPlus && ElementPlus.ElMessage) || window.ElMessage;
+    const App = {
+  setup() {
+    const { SwitchButton, Plus, Edit, VideoPlay, Delete, Download, Upload, Message } = ElementPlusIconsVue;
+    const active = '/jobs';
+        const user = ref('');
+        const loading = ref(false);
+        const saving = ref(false);
+        const jobs = ref([]);
+        const dlg = ref(false);
+        const formRef = ref();
+        const blank = () => ({
+          id: null, name: '', kind: 'shell', cron: '', enabledBool: false,
+          depends_on: '', command: '', verify_command: '', out_dir: '', retention_days: 7, kv: '',
+          notifyOnSuccessBool: false, notifyOnFailureBool: true,
+        });
+        const form = reactive(blank());
+        const filters = reactive({ name: '', enabled: '' });
+        // Apply filter params passed from the dashboard (e.g. /jobs?enabled=1).
+        (() => {
+          const q = new URLSearchParams(location.search);
+          if (q.get('enabled')) filters.enabled = q.get('enabled');
+        })();
+        const filteredJobs = computed(() => jobs.value.filter(j => {
+          if (filters.name && !j.name.includes(filters.name)) return false;
+          if (filters.enabled !== '' && String(j.enabled) !== filters.enabled) return false;
+          return true;
+        }));
+        const rules = {
+          name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
+          kind: [{ required: true, message: '请选择类型', trigger: 'change' }],
+          cron: [{ required: true, message: '请输入 cron', trigger: 'blur' }],
+        };
+
+        const onMenu = (i) => { if (i !== active) location.href = i; };
+        const logout = () => { fetch('/api/logout', { method: 'POST' }).then(() => location.href = '/login'); };
+
+        const load = async () => {
+          loading.value = true;
+          try {
+            const [j, u] = await Promise.all([
+              fetch('/api/jobs').then(x => x.json()),
+              fetch('/api/current-user').then(x => x.json()),
+            ]);
+            jobs.value = (j.data && j.data.list) || [];
+            user.value = (u.data && u.data.username) || '';
+          } finally { loading.value = false; }
+        };
+
+        const openCreate = () => { Object.assign(form, blank()); dlg.value = true; };
+        const openEdit = (row) => {
+          Object.assign(form, blank(), row, {
+            enabledBool: row.enabled === 1,
+            notifyOnSuccessBool: row.notify_on_success === 1,
+            notifyOnFailureBool: row.notify_on_failure === 1,
+          });
+          dlg.value = true;
+        };
+        const readKv = () => {
+          const text = form.kv.trim();
+          if (!text) return {};
+          let value;
+          try {
+            value = JSON.parse(text);
+          } catch (e) {
+            ElMessage.error('扩展参数不是有效 JSON');
+            return null;
+          }
+          if (value === null || Array.isArray(value) || typeof value !== 'object') {
+            ElMessage.error('扩展参数必须是 JSON 对象');
+            return null;
+          }
+          return value;
+        };
+        const formatKv = () => {
+          const value = readKv();
+          if (value !== null) {
+            form.kv = JSON.stringify(value, null, 2);
+            ElMessage.success('JSON 已格式化');
+          }
+        };
+        const validateKv = () => {
+          if (readKv() !== null) ElMessage.success('JSON 校验通过');
+        };
+        const minifyKv = () => {
+          const value = readKv();
+          if (value !== null) {
+            form.kv = JSON.stringify(value);
+            ElMessage.success('JSON 已压缩');
+          }
+        };
+        const save = () => {
+          if (form.kv.trim() && readKv() === null) return;
+          formRef.value.validate(async (valid) => {
+            if (!valid) return;
+            saving.value = true;
+            const body = {
+              name: form.name, kind: form.kind, cron: form.cron,
+              enabled: form.enabledBool ? 1 : 0, depends_on: form.depends_on,
+              command: form.command, verify_command: form.verify_command,
+              out_dir: form.out_dir, retention_days: form.retention_days, kv: form.kv,
+              notify_on_success: form.notifyOnSuccessBool ? 1 : 0,
+              notify_on_failure: form.notifyOnFailureBool ? 1 : 0,
+            };
+            const url = form.id ? '/api/jobs/' + form.id : '/api/jobs';
+            const method = form.id ? 'PUT' : 'POST';
+            const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json());
+            saving.value = false;
+            if (r.code === 0) { dlg.value = false; load(); ElMessage.success('已保存'); }
+            else ElMessage.error(r.msg || '保存失败');
+          });
+        };
+        const toggle = async (row, v) => {
+          const r = await fetch('/api/jobs/' + row.id + '/' + (v ? 'enable' : 'disable'), { method: 'POST' }).then(x => x.json());
+          if (r.code === 0) load(); else ElMessage.error(r.msg);
+        };
+        const runJob = async (row) => {
+          if (row.running) return;
+          row.running = true;
+          try {
+            const r = await fetch('/api/jobs/' + row.id + '/run', { method: 'POST' }).then(x => x.json());
+            if (r.code === 0) {
+              const st = (r.data && r.data.status) || '';
+              if (st === 'failed') ElMessage.error('任务「' + row.name + '」执行失败');
+              else ElMessage.success('任务「' + row.name + '」已触发执行，状态：' + st);
+            } else {
+              ElMessage.error(r.msg || '执行失败');
+            }
+          } catch (e) {
+            ElMessage.error('执行失败');
+          } finally {
+            row.running = false;
+          }
+        };
+        const del = async (row) => {
+          const r = await fetch('/api/jobs/' + row.id, { method: 'DELETE' }).then(x => x.json());
+          if (r.code === 0) { load(); ElMessage.success('已删除'); } else ElMessage.error(r.msg);
+        };
+
+        const exportJobs = async () => {
+          try {
+            const r = await fetch('/api/jobs/export').then(x => x.json());
+            if (r.code === 0 && r.data && r.data.jobs) {
+              const blob = new Blob([JSON.stringify(r.data.jobs, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'opsdump-jobs-' + new Date().toISOString().slice(0,10) + '.json';
+              a.click();
+              URL.revokeObjectURL(url);
+              ElMessage.success('导出成功');
+            } else {
+              ElMessage.error(r.msg || '导出失败');
+            }
+          } catch (e) {
+            ElMessage.error('导出失败');
+          }
+        };
+
+        const importInput = ref(null);
+        const importJobs = async (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+          event.target.value = '';
+          try {
+            const text = await file.text();
+            const jobs = JSON.parse(text);
+            if (!Array.isArray(jobs)) {
+              ElMessage.error('JSON 格式错误：应为数组');
+              return;
+            }
+            const r = await fetch('/api/jobs/import', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jobs }),
+            }).then(x => x.json());
+            if (r.code === 0 && r.data && r.data.results) {
+              const results = r.data.results;
+              const ok = results.filter(x => x.status === 'ok').length;
+              const skipped = results.filter(x => x.status === 'skipped').length;
+              const failed = results.filter(x => x.status === 'failed').length;
+              let msg = '导入完成：成功 ' + ok + ' 条，跳过 ' + skipped + ' 条';
+              if (failed > 0) {
+                msg += '，失败 ' + failed + ' 条';
+                const failedNames = results.filter(x => x.status === 'failed').map(x => x.name + '(' + x.message + ')').join('、');
+                ElMessage({ type: 'warning', message: msg + '\n' + failedNames, duration: 5000 });
+              } else {
+                ElMessage.success(msg);
+              }
+              load();
+            } else {
+              ElMessage.error(r.msg || '导入失败');
+            }
+          } catch (e) {
+            ElMessage.error('导入失败：' + e.message);
+          }
+        };
+
+        // 通知配置
+        const notifyDlg = ref(false);
+        const notifySaving = ref(false);
+        const notifyChannel = ref('feishu');
+        const notifyForm = reactive({
+          feishu: { enabled: false, webhook: '' },
+          dingtalk: { enabled: false, webhook: '' },
+        });
+
+        const openNotifyConfig = async () => {
+          try {
+            const r = await fetch('/api/notify/config').then(x => x.json());
+            if (r.code === 0 && r.data && r.data.configs) {
+              const cfgs = r.data.configs;
+              if (cfgs.feishu) {
+                notifyForm.feishu.enabled = cfgs.feishu.enabled === 1;
+                notifyForm.feishu.webhook = cfgs.feishu.webhook || '';
+              }
+              if (cfgs.dingtalk) {
+                notifyForm.dingtalk.enabled = cfgs.dingtalk.enabled === 1;
+                notifyForm.dingtalk.webhook = cfgs.dingtalk.webhook || '';
+              }
+            }
+          } catch (e) {}
+          notifyDlg.value = true;
+        };
+
+        const saveNotifyConfig = async (channel) => {
+          notifySaving.value = true;
+          try {
+            const cfg = notifyForm[channel];
+            const r = await fetch('/api/notify/config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                channel: channel,
+                enabled: cfg.enabled ? 1 : 0,
+                webhook: cfg.webhook,
+              }),
+            }).then(x => x.json());
+            if (r.code === 0) {
+              ElMessage.success('已保存');
+            } else {
+              ElMessage.error(r.msg || '保存失败');
+            }
+          } catch (e) {
+            ElMessage.error('保存失败');
+          } finally {
+            notifySaving.value = false;
+          }
+        };
+
+        const testNotify = async (channel) => {
+          try {
+            const r = await fetch('/api/notify/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ channel }),
+            }).then(x => x.json());
+            if (r.code === 0 && r.data) {
+              if (r.data.success) {
+                ElMessage.success(r.data.message);
+              } else {
+                ElMessage.error(r.data.message);
+              }
+            } else {
+              ElMessage.error(r.msg || '测试失败');
+            }
+          } catch (e) {
+            ElMessage.error('测试失败');
+          }
+        };
+
+        // 排序功能
+        const moveUp = async (index) => {
+          if (index === 0) return;
+          const arr = [...filteredJobs.value];
+          [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
+          await saveOrder(arr);
+        };
+
+        const moveDown = async (index) => {
+          if (index >= filteredJobs.value.length - 1) return;
+          const arr = [...filteredJobs.value];
+          [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+          await saveOrder(arr);
+        };
+
+        const saveOrder = async (arr) => {
+          const ids = arr.map(j => j.id);
+          try {
+            const r = await fetch('/api/jobs/sort', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ids }),
+            }).then(x => x.json());
+            if (r.code === 0) {
+              load();
+            } else {
+              ElMessage.error(r.msg || '排序失败');
+            }
+          } catch (e) {
+            ElMessage.error('排序失败');
+          }
+        };
+
+        onMounted(load);
+        return { active, user, loading, saving, jobs, dlg, form, formRef, rules, filters, filteredJobs, importInput,
+          notifyDlg, notifySaving, notifyChannel, notifyForm, openNotifyConfig, saveNotifyConfig, testNotify,
+          moveUp, moveDown,
+          onMenu, logout, openCreate, openEdit, formatKv, validateKv, minifyKv, save, toggle, runJob, del, exportJobs, importJobs,
+          Plus, Edit, VideoPlay, Delete, SwitchButton, Download, Upload, Message };
+      },
+    };
+    const app = createApp(App);
+    app.use(ElementPlus);
+    for (const [k, c] of Object.entries(ElementPlusIconsVue)) app.component(k, c);
+    app.mount('#app');
+  </script>
+</body>
+</html>

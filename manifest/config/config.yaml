@@ -1,0 +1,37 @@
+server:
+  address: ":28090"
+  openapiPath: "/api.json"
+  swaggerPath: "/swagger"
+  serverRoot:  "resource/public"
+  dumpRouterMap: true
+  logger:
+      path:                 "./logs/server"
+      file:                 "{Y-m-d}.log"
+      stdout:               true
+      rotateSize:           "100M"
+      rotateBackupLimit:    10
+      rotateBackupExpire:   "30d"
+      rotateBackupCompress: 9
+      rotateCheckInterval:  "24h"
+
+ops-dump:
+  timezone: "Asia/Shanghai"
+  dbPath: "./ops-dump.db"      # SQLite 数据库文件（建议改为绝对路径）
+  credentials:
+    envFile: "./.env"  # 运行时变量
+  admin:
+    username: admin
+
+logger:
+  path: ./logs                       # 日志目录（自动创建）
+  file: ops-dump.log                 # 日志文件名（path + file 组合为完整路径）
+  level: all                        # 日志级别：all|debug|info|notice|warning|error|critical
+  stdout: true                      # 同时输出到控制台
+
+# The page templates are Vue single-file apps whose interpolation syntax ({{ }})
+# collides with Go's default template delimiter. Use a non-conflicting delimiter
+# so Go leaves the Vue {{ }} untouched and the browser renders them reactively.
+viewer:
+  delimiters:               # 模板引擎变量分隔符号。默认为 ["{{", "}}"]
+    - "${"
+    - "}"
