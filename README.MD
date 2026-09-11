@@ -25,7 +25,7 @@
 
 ### 1. 准备环境变量
 
-复制 `./.env` 为 `./ops-dump.env`（权限建议 `600`），并根据实际情况修改：
+编辑 `.env` 并根据实际情况修改：
 
 ```dotenv
 # 管理员密码（启动前必须修改！）
@@ -64,7 +64,7 @@ ops-dump:
   timezone: "Asia/Shanghai"
   dbPath: "./ops-dump.db"
   credentials:
-    envFile: "./ops-dump.env"
+    envFile: ".env"
   admin:
     username: admin
 logger:
@@ -78,11 +78,11 @@ logger:
 
 ```bash
 # 开发运行
-go run . --config manifest/config/config.yaml
+go run main.go
 
 # 或交叉编译后运行（sqlite 为纯 Go，无 CGO，可静态编译）
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ops-dump .
-./ops-dump --config ./config.yaml
+./ops-dump
 ```
 
 启动后访问 `http://<host>:28090`，用 `admin` 登录，进入任务管理启用/新建任务。
@@ -124,37 +124,20 @@ ops-dump/
 
 ## 主要接口
 
-| 接口                                                               | 说明           | <br />                         | <br /> |
-| ---------------------------------------------------------------- | ------------ | :----------------------------- | :----- |
-| `GET /ping`                                                      | 探活，返回 `pong` | <br />                         | <br /> |
-| `GET /healthz`                                                   | 健康检查，返回 JSON | <br />                         | <br /> |
-| `GET /login`                                                     | 登录页（公开）      | <br />                         | <br /> |
-| `/`、`/dashboard`、`/jobs`、`/runs`                                 | 管理页面（需登录）    | <br />                         | <br /> |
-| `POST /api/login` / `POST /api/logout` / `GET /api/current-user` | 认证           | <br />                         | <br /> |
-| `GET/POST /api/jobs`、`GET/PUT/DELETE /api/jobs/:id`              | 任务 CRUD      | <br />                         | <br /> |
-| \`POST /api/jobs/:id/enable                                      | disable      | run`、`GET /api/jobs/:id/runs\` | 任务操作   |
-
-## 任务执行流程
-
-```
-gcron 触发(AddSingleton) 或 页面手动触发
- → 校验 depends_on 前置项已成功，否则跳过
- → 磁盘预检(out_dir 剩余空间 ≥ min_free_mb，否则 failed)
- → 写 job_runs.status=running
- → 注入 ${VAR}(读 .env) → os/exec 当前用户执行 → 记 output/exit_code/elapsed
- → 统计产物体积(size_mb)
- → 配置 verify_command 则执行检测(verify_status/output)
- → 更新 job_runs；失败/检测失败 → 结构化日志 + 飞书
- → (可选 kv.auto_retry=1) 失败补跑 1 次
-```
+| 接口 | 说明 |
+| --- | --- |
+| `GET /ping` | 探活，返回 `pong` |
+| `GET /healthz` | 健康检查，返回 JSON |
+| `GET /login` | 登录页（公开） |
+| `/`、`/dashboard`、`/jobs`、`/runs` | 管理页面（需登录） |
+| `POST /api/login` / `POST /api/logout` / `GET /api/current-user` | 认证 |
+| `GET/POST /api/jobs`、`GET/PUT/DELETE /api/jobs/:id` | 任务 CRUD |
+| `POST /api/jobs/:id/enable`、`disable`、`run`、`GET /api/jobs/:id/runs` | 任务操作 |
 
 ## 部署
 
-单机本地运行。任务命令内用 `ssh 目标机 '...'` 实现跨机调度。
-
 ```bash
-# 生产建议用 nohup 或 systemd 守护
-nohup ./ops-dump --config ./config.yaml >> ./logs/ops-dump-daemon.out 2>&1 &
+nohup ./ops-dump > /dev/null 2>&1 &
 ```
 
 ## 注意事项
@@ -162,6 +145,3 @@ nohup ./ops-dump --config ./config.yaml >> ./logs/ops-dump-daemon.out 2>&1 &
 - 敏感信息一律 `${VAR}` 引用 `.env`，明文不出库不落地；`.env` 权限 `600`。
 - `httpAddr` 建议绑定内网；通用 shell 任务拥有执行权限，需审计。
 - 备份产物应与源数据不在同一磁盘；清理任务须排在同步任务之后。
-- 命令以当前进程用户在本机执行，需对 docker 有执行权限（root 或 docker 组）。
-
-详见设计文档：[docs/ops-dump-design.md](docs/ops-dump-design.md)
