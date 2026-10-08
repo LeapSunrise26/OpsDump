@@ -165,7 +165,7 @@ pnpm run dist
 ```
 
 - 运行数据（`ops-dump.db` / `.env` / `logs`）在 `%APPDATA%\ops-dump-desktop\data\`，
-  首次启动生成 `.env`（默认口令 `Opsdump1!`，登录后请尽快修改）。
+  首次启动生成 `.env`（默认口令，登录后请尽快修改）。
 - 后端仅监听 `127.0.0.1`，端口默认 28090、被占用时自动换端口。
 - 国内网络：`pnpm run dist` 已内置 npmmirror 镜像（`hack/build-desktop.ps1` 设置
   `ELECTRON_MIRROR` / `ELECTRON_BUILDER_BINARIES_MIRROR`，已设则沿用）。`pnpm install`
