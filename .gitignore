@@ -26,7 +26,7 @@ logs/
 /ops-dump
 /ops-dump-test
 build/*
-v1.0.0/*
+0.2.0/*
 deploy.ps1
 dist/
 internal/packed/build_pack_data.go

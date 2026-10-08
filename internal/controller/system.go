@@ -13,7 +13,7 @@ import (
 )
 
 // Version is the running build version.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // SystemController exposes liveness/status and a demo endpoint.
 type SystemController struct{}
