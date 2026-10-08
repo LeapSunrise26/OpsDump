@@ -9,8 +9,6 @@
 bin/
 **/.DS_Store
 gf
-main
-main.exe
 output/
 manifest/output/
 temp/
@@ -30,3 +28,6 @@ logs/
 build/*
 v1.0.0/*
 deploy.ps1
+dist/
+internal/packed/build_pack_data.go
+node_modules/

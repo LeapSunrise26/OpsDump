@@ -1,0 +1,16 @@
+# pnpm 11 reads project settings from this file (the "pnpm" field in
+# package.json is no longer honored).
+#
+# pnpm blocks dependency build scripts by default; without this map
+# `pnpm install` fails with ERR_PNPM_IGNORED_BUILDS.
+# - electron-winstaller: native 7-Zip selection used by electron-builder NSIS
+# - electron: downloads the Electron runtime binary (uses ELECTRON_MIRROR
+#   when set; result is cached in %LOCALAPPDATA%\electron\Cache, so later
+#   installs succeed offline). If it fails on a fresh machine, set
+#   ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ and reinstall,
+#   or run `pnpm electron:fetch` after install.
+allowBuilds:
+  electron: true
+  electron-winstaller: true
+  "@electron/rebuild": true
+  esbuild: true

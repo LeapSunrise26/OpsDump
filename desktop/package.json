@@ -1,0 +1,48 @@
+{
+  "name": "ops-dump-desktop",
+  "version": "0.1.0",
+  "description": "OpsDump desktop shell (Electron sidecar wrapper)",
+  "private": true,
+  "main": "main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev:external": "set SIDECAR_EXTERNAL=1&& electron .",
+    "electron:fetch": "node node_modules/electron/install.js",
+    "build:sidecar": "powershell -NoProfile -ExecutionPolicy Bypass -File ../hack/build-windows.ps1",
+    "dist": "powershell -NoProfile -ExecutionPolicy Bypass -File ../hack/build-desktop.ps1"
+  },
+  "devDependencies": {
+    "electron": "44.6.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.leapsunrise.opsdump",
+    "productName": "OpsDump",
+    "directories": {
+      "output": "../dist"
+    },
+    "files": [
+      "main/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist/sidecar/ops-dump.exe",
+        "to": "sidecar/ops-dump.exe"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

@@ -27,3 +27,14 @@ type HelloReq struct {
 type HelloRes struct {
 	Content string `json:"content" dc:"返回内容"`
 }
+
+// ShutdownReq gracefully stops the HTTP server. It is intentionally public
+// (the desktop shell may call it before login) but requires the custom
+// X-OpsDump-Control header: cross-origin browser requests cannot set custom
+// headers without a CORS preflight, which this server never answers.
+type ShutdownReq struct {
+	g.Meta `path:"/api/system/shutdown" method:"post" tags:"System" summary:"优雅关闭服务(本机控制端)"`
+}
+type ShutdownRes struct {
+	Message string `json:"message" dc:"消息"`
+}

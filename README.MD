@@ -145,6 +145,35 @@ ops-dump/
 nohup ./ops-dump > /dev/null 2>&1 &
 ```
 
+## 桌面版（Electron）
+
+Windows 桌面版把后端作为 sidecar 子进程托管，双击即用、数据与安装目录隔离，
+设计详见 [docs/opsdump-electron-design.md](./docs/opsdump-electron-design.md)。
+
+```bash
+# 构建 sidecar（gf pack 内嵌 resource + 交叉编译 windows/amd64，需本机 gf CLI）
+make build-windows
+
+# 开发运行（自动 spawn dist/sidecar/ops-dump.exe，pnpm 或 npm 均可）
+cd desktop && pnpm install && pnpm start
+
+# 开发时连本机已跑的 go run 实例（不 spawn）
+set SIDECAR_EXTERNAL=1&& pnpm start
+
+# 打包 NSIS 安装包（先构建 sidecar，产物在 dist/）
+pnpm run dist
+```
+
+- 运行数据（`ops-dump.db` / `.env` / `logs`）在 `%APPDATA%\ops-dump-desktop\data\`，
+  首次启动生成 `.env`（默认口令 `Opsdump1!`，登录后请尽快修改）。
+- 后端仅监听 `127.0.0.1`，端口默认 28090、被占用时自动换端口。
+- 国内网络：`pnpm run dist` 已内置 npmmirror 镜像（`hack/build-desktop.ps1` 设置
+  `ELECTRON_MIRROR` / `ELECTRON_BUILDER_BINARIES_MIRROR`，已设则沿用）。`pnpm install`
+  下载 electron 运行时若失败，先 `set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/`
+  再装，或装完补 `cd desktop && pnpm electron:fetch`。
+- 依赖构建脚本放行配置在 `desktop/pnpm-workspace.yaml`（pnpm 11 的 `allowBuilds`）；
+  electron 固定 44.6.0 以满足供应链 24 小时最小发布龄策略。
+
 ## 注意事项
 
 - 敏感信息一律 `${VAR}` 引用 `.env`，明文不出库不落地；`.env` 权限 `600`。
